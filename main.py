@@ -1,7 +1,9 @@
 import cv2
 import math
 
-ASCII_CHARS = ".:-=+*#%@"
+ASCII_CHARS_BLOCK = " ░▒▓█"
+ASCII_CHARS_NORMAL = ".:-=+*#%@"
+ASCII_CHARS_IMPACT = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
 
 
 print("-------ASCII ARK GENERATOR---------")
@@ -30,19 +32,30 @@ else:
 
 
 
-
 def image_to_ascii(gray, width, height):
     resized_image = cv2.resize(gray, (width, new_height))
 
     pixels = resized_image.flatten().astype(int)
 
-    num_chars = len(ASCII_CHARS)
-    ascii_str = "".join([ASCII_CHARS[pixel * num_chars // 256] for pixel in pixels])
-
-    ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
-
-
-    print(ascii_image)
+    print("1: " + ASCII_CHARS_NORMAL)
+    print("2: " + ASCII_CHARS_BLOCK)
+    print("3: " + ASCII_CHARS_IMPACT)
+    choose = input("Choose characters: ")
+    if choose == "1":
+        num_chars = len(ASCII_CHARS_NORMAL)
+        ascii_str = "".join([ASCII_CHARS_NORMAL[pixel * num_chars // 256] for pixel in pixels])
+        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
+        print(ascii_image)
+    elif choose == "2":
+        num_chars = len(ASCII_CHARS_BLOCK)
+        ascii_str = "".join([ASCII_CHARS_BLOCK[pixel * num_chars // 256] for pixel in pixels])
+        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
+        print(ascii_image)
+    elif choose == "3":
+        num_chars = len(ASCII_CHARS_IMPACT)
+        ascii_str = "".join([ASCII_CHARS_IMPACT[pixel * num_chars // 256] for pixel in pixels])
+        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
+        print(ascii_image)
 
 
 image_to_ascii(gray, new_width, new_height)
