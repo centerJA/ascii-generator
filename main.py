@@ -1,63 +1,180 @@
 import cv2
 import math
+import mimetypes
+import sys
+import time
+
 
 ASCII_CHARS_BLOCK = " ░▒▓█"
-ASCII_CHARS_NORMAL = ".:-=+*#%@"
+ASCII_CHARS_NORMAL = " .:-=+*#%@"
 ASCII_CHARS_IMPACT = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$"
 
+new_width = None
+new_height = None
+skip_frames = None
+gray = None
+rgb = None
+identify = None
 
-print("-------ASCII ARK GENERATOR---------")
+def change_size_function(width, height):
+    question = input("Would you like to change a size?[y/n]: ")
+
+    if question == "y" or question == "Y":
+        try:
+            new_width = math.ceil(int(input("Type a new width: ")))
+        except ValueError:
+            print("Error was occurred")
+            new_width = width
+        ratio = math.ceil(width / height)
+        factor = float(input("Input a correction factor (normal=0.55): "))
+        new_height = math.ceil(height * (new_width / width) * factor)
+    elif question == "n" or question == "N":
+        factor = float(input("Input a correction factor (normal=0.55): "))
+        new_width = width
+        new_height = math.ceil(height * (new_width / width) * factor)
+    else:
+        print("You inputted wrong choice")
+        print("Aborted")
+        sys.exit()
+
+    return new_width, new_height
+
+
+print("-------ASCII ART GENERATOR---------")
+print("Ex) drink.jpg, cat.jpeg, penguin.webp, tiger.jpg, cat.mp4")
 print("If you want to use sample, type s and press enter")
 path = input("Enter the path: ")
 if path == "s":
-    print("You selected sample.jpg")
+    print("You selected drink.jpg")
     path = "./sample.jpg"
-img = cv2.imread(path)
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-height, width = gray.shape
-print("This photos ratio is (width:height)" + str(width) + ":" + str(height))
-question = input("Would you like to change a size? [y/n]: ")
-if question == "y" or question == "Y":
-    try:
-        new_width = math.ceil(int(input("Type a new width: ")))
-    except ValueError:
-        print("Error was occurred")
-        new_width = width
-    ratio = math.ceil(width / height)
-    factor = float(input("Input a correction factor (normal=0.55): "))
-    new_height = math.ceil(height * (new_width / width) * factor)
+
+mime_type, _ = mimetypes.guess_type(path)
+if mime_type and mime_type.startswith('image'):
+    print("You selected image")
+    identify = "image"
+    img = cv2.imread(path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    height, width = gray.shape
+    print("This photos ratio is (width:height)" + str(width) + ":" + str(height))
+    new_width, new_height = change_size_function(width, height)
+
+
+elif mime_type and mime_type.startswith('video'):
+    print("You selected video")
+    identify = "video"
+    cap = cv2.VideoCapture(path)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if not cap.isOpened():
+        print("Error was occured")
+        print("Aborted")
+        sys.exit()
+    print("This videos ratio is (width:height)" + str(width) + ": " + str(height))
+    print("FPS: " + str(int(fps)))
+    new_width, new_height = change_size_function(width, height)
+    skip_frames = int(input("How many frames to skip? (normal=1 or 2): "))
+    sleep_time = (1.0 / fps) * skip_frames if fps > 0 else 0.05
+
+    print("\n--- Starting Video in 3 seconds... Press Ctrl+C to stop ---")
+    time.sleep(3)
+
+
+
+
+
 else:
-    new_width = width
-    new_height = height
+    print("You selected wrong file")
+    print("Aborted")
+    sys.exit()
 
 
 
-def image_to_ascii(gray, width, height):
-    resized_image = cv2.resize(gray, (width, new_height))
-
-    pixels = resized_image.flatten().astype(int)
-
+def ascii_chars_list():
     print("1: " + ASCII_CHARS_NORMAL)
     print("2: " + ASCII_CHARS_BLOCK)
     print("3: " + ASCII_CHARS_IMPACT)
+
+
+
+def gray_generator(chars, pixels, width):
+    num_chars = len(chars)
+    ascii_str = "".join([chars[pixel * num_chars // 256] for pixel in pixels])
+    ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
+    return ascii_image
+
+
+def rgb_generator(chars, pixels_rgb, pixels_gray):
+    num_chars = len(ASCII_CHARS_NORMAL)
+    gen = []
+
+    for i in range(len(pixels_gray)):
+        brightness = pixels_gray[i]
+        char = ASCII_CHARS_NORMAL[brightness * num_chars // 256]
+        r, g, b = pixels_rgb[i]
+        colored_char = f"\033[38;2;{r};{g};{b}m{char}"
+        gen.append(colored_char)
+
+        if (i + 1) % new_width == 0:
+            gen.append("\033[0m\n")
+
+    return "".join(gen)
+
+def image_to_ascii_gray(gray, width, height):
+    resized_image = cv2.resize(gray, (width, height))
+
+    pixels = resized_image.flatten().astype(int)
+
+    ascii_chars_list()
     choose = input("Choose characters: ")
     if choose == "1":
-        num_chars = len(ASCII_CHARS_NORMAL)
-        ascii_str = "".join([ASCII_CHARS_NORMAL[pixel * num_chars // 256] for pixel in pixels])
-        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
-        print(ascii_image)
+        print(gray_generator(ASCII_CHARS_NORMAL, pixels, width))
     elif choose == "2":
-        num_chars = len(ASCII_CHARS_BLOCK)
-        ascii_str = "".join([ASCII_CHARS_BLOCK[pixel * num_chars // 256] for pixel in pixels])
-        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
-        print(ascii_image)
+        print(gray_generator(ASCII_CHARS_BLOCK, pixels, width))
     elif choose == "3":
-        num_chars = len(ASCII_CHARS_IMPACT)
-        ascii_str = "".join([ASCII_CHARS_IMPACT[pixel * num_chars // 256] for pixel in pixels])
-        ascii_image = "\n".join(ascii_str[i:(i + width)] for i in range(0, len(ascii_str), width))
-        print(ascii_image)
+        print(gray_generator(ASCII_CHARS_IMPACT, pixels, width))
+    else:
+        print("You inputted wrong choice")
+        print("Aborted")
+        sys.exit()
 
 
-image_to_ascii(gray, new_width, new_height)
+def image_to_ascii_rgb(grey, rgb, width, height):
+    resized_rgb = cv2.resize(rgb, (width, height))
+    resized_gray = cv2.resize(gray, (width, height))
 
+    pixels_rgb = resized_rgb.reshape(-1, 3).astype(int)
+    pixels_gray = resized_gray.flatten().astype(int)
+
+    ascii_chars_list()
+    choose = input("Choose characters: ")
+    if choose == "1":
+        print(rgb_generator(ASCII_CHARS_NORMAL, pixels_rgb, pixels_gray))
+    elif choose == "2":
+        print(rgb_generator(ASCII_CHARS_BLOCK, pixels_rgb, pixels_gray))
+    elif choose == "3":
+        print(rgb_generator(ASCII_CHARS_IMPACT, pixels_rgb, pixels_gray))
+    else:
+        print("You inputted wrong choice")
+        print("Aborted")
+        sys.exit()
+
+
+def video_to_ascii_gray():
+    print("test")
+
+
+if identify == "image":
+    color = input("Which do you prefer, RGB or gray?[r/g]:")
+    if color == "r":
+        image_to_ascii_rgb(gray, rgb, new_width, new_height)
+    elif color == "g":
+        image_to_ascii_gray(gray, new_width, new_height)
+    else:
+        print("You inputted wrong choice")
+        print("Aborted")
+        sys.exit()
+elif identify == "video":
+    video_to_ascii_gray()
 
